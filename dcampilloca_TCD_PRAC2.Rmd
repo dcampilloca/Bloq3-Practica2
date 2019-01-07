@@ -1,21 +1,22 @@
 ---
 title: "Tipologia i cicle de vida de les dades: Pràctica 2"
 author: "Diana Campillo Campbell"
-date: "27 de desembre de 2018"
-output: 
+date: "3 de gener de 2019"
+output:
+  word_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    number_sections: yes
+    toc: yes
   html_document:
     highlight: kate
     number_sections: yes
     theme: paper
     toc: yes
     toc_depth: 2
-  pdf_document:
-    toc: yes
-    number_sections: yes
-
-lang: ca    # speak language: ca is catalan, es is spanish
-nocite: |   # cites do not include in the text but include in bibilography references
-
+nocite: null
+lang: ca
 ---
 
 ```{r setup, include=FALSE}
@@ -24,19 +25,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r load_libraries, include=FALSE}
 library(knitr)
-# library(lettercase)
-# library(psych)
 library(xtable)
-# library(stringr)
-# library(VIM)
-# library(ggplot2)
 library(dplyr)
 library(arules)
+library(stats)
 ```
 
-#Descripció  del  dataset.  Perquè  és  important  i  quina  pregunta/problema  pretén respondre?
+#1. Descripció  del  dataset.  Perquè  és  important  i  quina  pregunta/problema  pretén respondre?
 
-En l'actualitat, malauradament, és comú en la comunitat científica la migració de persones per a poder-se desenvolupar professionalment. Molts països no tenen la cultura d'acollir aquest potencial que tenen i qui vol dedicar-se a la recerca sovint es veu amb la necessitat de marxar per poder continuar la seva carrera professional. Espanya és un clar exemple. Però ara tenim la oportunitat de comprovar-ho i poder veure quant de cert és aquesta afirmació.
+En l'actualitat, malauradament, és comú en la comunitat científica la migració de investigadors per a poder-se desenvolupar professionalment. Molts països no tenen la cultura d'acollir aquest potencial que tenen i qui vol dedicar-se a la recerca sovint es veu amb la necessitat de marxar per poder continuar la seva carrera professional. Espanya és un clar exemple. Però ara tenim la oportunitat de comprovar-ho i poder veure quant de cert és aquesta afirmació.
 
 
 Centrarem el nostre estudi a Espanya i EEUU. Les preguntes que volem respondre són: 
@@ -50,11 +47,11 @@ Centrarem el nostre estudi a Espanya i EEUU. Les preguntes que volem respondre s
 
 Utilitzarem els següents datasets: 
 
-1. **Scientific Researcher Migrations**: obtingut de *Kaggle*. Són els registres corresponen a investigadors que tenen codi ORCID, on s'indica si tenen doctorat, país i any que l'han obtigut, així com informació de països que consten en el registre i si han migrat o no. 
+1. **Scientific Researcher Migrations**: obtingut de *Kaggle: https://www.kaggle.com/jboysen/scientist-migrations*. Són els registres corresponen a investigadors que tenen codi ORCID, on s'indica si tenen doctorat, país i any que l'han obtigut, així com informació de països que consten en el registre i si han migrat o no. 
 
-2. **gdp**: obtingut de *Github*. És la renta per càpita en dólars, per països i anys.
+2. **gdp**: obtingut de *Github: https://github.com/datasets/gdp/blob/master/data/gdp.csv*. Conté la renta per càpita en dòlars, per països i anys.
 
-3. **Coutnry codes**: obtingut de *Github*. Conté la codificació de països amb les seves descripcions en diferents idiomes. Entre les codificacions hi ha les que utilitzen el fitxers anteriors (Alpha-2 i Alpha-3).
+3. **Country codes**: obtingut de *Github: https://github.com/datasets/country-codes/blob/master/data/country-codes.csv*. Conté la codificació de països amb les seves descripcions en diferents idiomes. Entre les codificacions hi ha les que utilitzen el fitxers anteriors (Alpha-2 i Alpha-3).
 
 
 A continuació una breu descripció dels atributs de cada dataset:
@@ -62,13 +59,13 @@ A continuació una breu descripció dels atributs de cada dataset:
 ```{r Obrir datasets}
 #Obrim dataset "Scientific Researcher Migrations"
 myfileResearcher <- "ORCID_migrations_2016_12_16_by_person.csv" 
-mydataResearcher <- read.csv(myfileResearcher,na.strings=c("", "NA"), stringsAsFactors=TRUE)
+mydataResearcher <- read.csv(myfileResearcher,na.strings=c("", "NA"), stringsAsFactors=FALSE)
 #Obrim dataset "gdp"
 myfileGDP <- "GPD.csv" 
-mydataGDP <- read.csv(myfileGDP,na.strings=c("", "NA"), stringsAsFactors=TRUE)
-#Obrim dataset "Coutnry codes"
+mydataGDP <- read.csv(myfileGDP,na.strings=c("", "NA"), stringsAsFactors=FALSE)
+#Obrim dataset "Country codes"
 myfileCodes <- "CountryCodes.csv" 
-mydataCodes <- read.csv(myfileCodes,na.strings=c("", "NA"), stringsAsFactors=TRUE)
+mydataCodes <- read.csv(myfileCodes,na.strings=c("", "NA"), stringsAsFactors=FALSE)
 ```
 
 1. **Scientific Researcher Migrations**:
@@ -91,6 +88,11 @@ mydataCodes <- read.csv(myfileCodes,na.strings=c("", "NA"), stringsAsFactors=TRU
 
 - **has_migrated**: *True/False* si ha emigrat
 
+```{r}
+res <- sapply(mydataResearcher,class)
+kable(data.frame(variables=names(res),clase=as.vector(res)))
+```
+
 
 2. **gdp**:
 
@@ -104,25 +106,34 @@ mydataCodes <- read.csv(myfileCodes,na.strings=c("", "NA"), stringsAsFactors=TRU
 
 - **Value**: quantitat en *USdòlars* de renta per càpita.
 
+```{r}
+res <- sapply(mydataGDP,class)
+kable(data.frame(variables=names(res),clase=as.vector(res)))
+```
 
-3. **Coutnry codes**:
+
+3. **Country codes**:
 
 `r nrow(mydataCodes)` registres i `r ncol(mydataCodes)` columes. Aquestes són: *`r colnames(mydataCodes)`*. Només descriurem les que ens interessen per l'objectiu de descofidicar les dades dels fitxers anteriors:
 
 - **ISO3166.1.Alpha.3**: codi de tres caràcters (utilitzat en el fitxer GPD).
 - **ISO3166.1.Alpha.2**: codi de dos caràcters (utilitzat en el fitxer Researchers Migration).
 - **official_name_en**: descripció en anglès del país
+```{r}
+res <- sapply(mydataCodes,class)
+kable(data.frame(variables=names(res),clase=as.vector(res)))
+```
 
-
-#Integració i selecció de les dades d’interès a analitzar.
+****
+#2. Integració i selecció de les dades d’interès a analitzar.
 
 - **Scientific Researcher Migrations**
 
-El fitxer *Scientific Researcher Migrations* conté diversos atributs relatius a països y a anys. Per facilitar el tractament de dades, decidirem aquí quin país determinem com país Origen i quin país será el Destí. També assignarem un any de referència.
+El fitxer *Scientific Researcher Migrations* conté diversos atributs relatius a països i anys. Per facilitar el tractament de dades, decidirem aquí quin país determinem com país Origen i quin país será el Destí. També assignarem un any de referència.
 
 *ORIGEN*
 
-Será el que, a partir de les dades, deduïm que deu ser la procedència de la persona. L'obtindrem seguin el següent criteri:
+Serà el que, a partir de les dades, deduïm que deu ser la procedència de la persona. L'obtindrem seguin el següent criteri:
 
 Com a atribut Origen posarem *earliest_country*. 
 Si aquest està en blanc, *phd_country*.
@@ -131,7 +142,7 @@ Si no, no podrem omplir el camp.
 
 *DESTI*
 
-Será el que, a partir de les dades, deduïm que deu ser el lloc de residència actual de la persona. L'obtindrem seguin el següent criteri:
+Serà el que, a partir de les dades, deduïm que deu ser el lloc de residència actual de la persona. L'obtindrem seguin el següent criteri:
 
 Com a atribut Origen posarem *country_2016*
 Si està en blanc, i *has_migrated="False"*, posarem el país *earliest_country.* Si també està en blanc, *phd_country*
@@ -141,329 +152,797 @@ Si està en blanc, ho deixarem en blanc
 
 Serà un punt de referència en el temps. El podem entendre quan l'investigador comença a formar part de la comunitat científica. Ja sigui perquè s'ha registrat a ORCID, o per fer el PhD. L'obtindrem seguin el següent criteri:
 
-Com a atribut Any posare *earliest_year*
-Si està en blanc, *phd_year*-4  (o *phd_year* - mitja o knn de la diferència entre (*phd_year* i *earliest_year*))
-Si està en blanc, no posarem any per no desvirtuar la informació, podría donar a error si ho posséssim en algún any. Tampoc ho distribuirem.
-
-- **gdp**
-
-El fitxer *gdp* afegirem la codificació de país Alpha-3, per poder creuar si calgués amb els registres del fitxer anterior. 
+Com a atribut Any poseré el mínim any entre *earliest_year* i *phd_year* (si algun d'aquest no té valor, doncs el valor del atribut que tingui valor).
+Si està en blanc, si té informat el *country_2016* posarem l'any '2016' 
+Si està en blanc, ho deixarem en blanc.
 
 
-```{r Afegir ORIGEN investigadors}
+```{r Afegir ORIGEN-DESTI-ANY investigadors}
 #ORIGEN
-#Com a atribut Origen posarem earliest_country
-#Si està en blanc, phd_country
-#Si està en blanc, mirem si has_migrated="False". Aleshores posarem country_2016.
-#Si no no podrem omplir el camp.
-
-#el total de migració com el total de persones o migració/total no cal posar com a nous atributs acumulats. Ja farem gràfics amb això
-
 mydataResearcher$origen_country<-mydataResearcher$earliest_country
+
 mydataResearcher$origen_country[which (is.na(mydataResearcher$origen_country))]<-mydataResearcher$phd_country[which (is.na(mydataResearcher$origen_country))]
+
 mydataResearcher$origen_country[which (is.na(mydataResearcher$origen_country) & mydataResearcher$has_migrated=="False")]<-mydataResearcher$country_2016[which (is.na(mydataResearcher$origen_country) & mydataResearcher$has_migrated=="False")]
 
-head(mydataResearcher)
-summary(mydataResearcher)
-
-```
-
-```{r Afegir DESTí investigadors}
 #DESTÍ
-#country_2016
-#Si està en blanc, i has_migrated="False", posarem el país earliest_country. Si també està en blanc, phd_country
-#Si està en blanc, ho deixarem en blanc
-
 mydataResearcher$desti_country<-mydataResearcher$country_2016
+
 mydataResearcher$desti_country[which (is.na(mydataResearcher$desti_country) & mydataResearcher$has_migrated=="False")]<-mydataResearcher$earliest_country[which (is.na(mydataResearcher$desti_country) & mydataResearcher$has_migrated=="False")]
+
 mydataResearcher$desti_country[which (is.na(mydataResearcher$desti_country) & mydataResearcher$has_migrated=="False")]<-mydataResearcher$phd_country[which (is.na(mydataResearcher$desti_country) & mydataResearcher$has_migrated=="False")]
 
 
-head(mydataResearcher)
-summary(mydataResearcher)
+#ANY
 
-#ATENCIÓ: incongruències trobades:
-#- hi ha registres que diu que no han migrat però hi ha origen i destí diferents. 
-#- hi ha registres que diu que sí han migrat però origen i destí són iguals.
-#- EXPLICACIO: pot ser que les dades origen i destí siguin incorrectes o que la persona hagi marxat per un estudi però no ha migrat. O que hagi tornat al seu país, o que sempre informi el seu país d'origen en ORCID. O que la dada de migració=TRUE sigui incorrecte. Ho obiarem i només tindrem en compte si diu "migration = TRUE" o no, enlloc de comparar els origens i destins.
+mydataResearcher <- transform(mydataResearcher, min = pmin(mydataResearcher$earliest_year,mydataResearcher$phd_year  ))
+colnames(mydataResearcher)[colnames(mydataResearcher)=="min"] <- "any"
 
-#ANY: idem que l'anterior
 
-#La resta idem que l'anterior.
+#Ara anem a introduir el valor pel que han quedat na:
+mydataResearcher$any[which (is.na(mydataResearcher$any))]<-mydataResearcher$earliest_year[which (is.na(mydataResearcher$any))]
+mydataResearcher$any[which (is.na(mydataResearcher$any))]<-mydataResearcher$phd_year[which (is.na(mydataResearcher$any))]
 
-```
-
-```{r Afegir ANY}
-#ANY: la idea és agafar l'any de registre, quan comencen a fer recerca. 
-#earliest_year
-#Si està en blanc, phd_year-4  (o phd_year - mitja o knn de la diferència entre (phd_year i earliest_year))
-#Si està en blanc, no posarem any per no desvirtuar la informació, podría donar a error si ho posséssim en algún any. Tampoc ho distribuirem.
-
-mydataResearcher$any<-mydataResearcher$earliest_year
-mydataResearcher$any[which (is.na(mydataResearcher$any) & !is.na(mydataResearcher$phd_year))]<-mydataResearcher$phd_year[which (is.na(mydataResearcher$any) & !is.na(mydataResearcher$phd_year))]-4
-
+mydataResearcher$any[which (is.na(mydataResearcher$any) & !is.na(mydataResearcher$country_2016))]<-2016
 
 head(mydataResearcher)
-summary(mydataResearcher)
 ```
 
+- **gdp**
+
+El fitxer *gdp* afegirem la codificació de país Alpha-2, per poder creuar amb els registres del fitxer anterior. 
 
 ```{r Construcció dataset renta per càpita}
 #Creuem GDP amb fitxer de codis
 #Reduïm les dades de CountryCodes i treiem els que no tenen codi o descripció assignat:
 mydataCodes<-subset(mydataCodes, select = c(ISO3166.1.Alpha.3,ISO3166.1.Alpha.2,official_name_en) )
 mydataCodes <- subset(mydataCodes, ((!is.na(mydataCodes$ISO3166.1.Alpha.3)&((!is.na(mydataCodes$ISO3166.1.Alpha.2)&(!is.na(mydataCodes$official_name_en)))))))
-summary(mydataCodes)
 
 #Reemplacem codi de país en fitxer GPD a Alpha-2
 mydataGDP<-merge(x = mydataGDP, y = mydataCodes, by.x=c("Country.Code"),by.y=c("ISO3166.1.Alpha.3"), all.x = TRUE)
-head(mydataGDP)
-
-
-#Només revisem dades de US i ES. Comprovem que no hi ha valors buits per a aquest 2 països
-
+#Eliminem registres que no tinguin info a Alpha-2
+mydataGDP<-na.omit(mydataGDP, cols=c("ISO3166.1.Alpha.2"))
 
 ```
 
-#Neteja de les dades.
-##Les dades contenen zeros o elements buits? Com gestionaries aquests casos?
+Ara procedirem a crear el nostre dataset amb el que farem els estudis, deixant només els atributs que ens interessen:
 
-Revisem l'estat de les dades:
+**Migration**
+```{r Migration dataset}
+myvars <- c("origen_country", "desti_country", "any", "has_phd", "has_migrated")
 
-- **GDP**:
+mydataMigration <- mydataResearcher[myvars]
 
-Revisem si hi ha dades nul·les. Observem que només n'hi ha pel nou atribut afegit (codi Alpha-2). Com que només ens interessa la informació dels països que estan a la taula Researchers, verifiquem que els països que conté, tots estan a la taula GDP. Per tant no afecten al nostre estudi les dades nul·les. 
+#Ara afegim GDP origen i GDP destí per a l'any del registre:
+mydataMigration<-merge(x = mydataMigration, y = mydataCodes, by.x=c("origen_country"),by.y=c("ISO3166.1.Alpha.2"), all.x = TRUE)
 
+colnames(mydataMigration)[colnames(mydataMigration)=="official_name_en"] <- "origen_name"
+mydataMigration$Country.Code<-NULL
+mydataMigration$Country.Name<-NULL
+mydataMigration$Year<-NULL
+mydataMigration$ISO3166.1.Alpha.3<-NULL
+
+mydataMigration<-merge(x = mydataMigration, y = mydataGDP, by.x=c("origen_country","any"),by.y=c("ISO3166.1.Alpha.2","Year"), all.x = TRUE)
+
+
+colnames(mydataMigration)[colnames(mydataMigration)=="Value"] <- "origen_GDP"
+mydataMigration$Country.Code<-NULL
+mydataMigration$Country.Name<-NULL
+mydataMigration$official_name_en<-NULL
+
+#idem pel destí:
+
+mydataMigration<-merge(x = mydataMigration, y = mydataCodes, by.x=c("desti_country"),by.y=c("ISO3166.1.Alpha.2"), all.x = TRUE)
+
+colnames(mydataMigration)[colnames(mydataMigration)=="official_name_en"] <- "desti_name"
+mydataMigration$Country.Code<-NULL
+mydataMigration$Country.Name<-NULL
+mydataMigration$Year<-NULL
+mydataMigration$ISO3166.1.Alpha.3<-NULL
+
+mydataMigration<-merge(x = mydataMigration, y = mydataGDP, by.x=c("desti_country","any"),by.y=c("ISO3166.1.Alpha.2","Year"), all.x = TRUE)
+nrow(mydataMigration)
+colnames(mydataMigration)[colnames(mydataMigration)=="Value"] <- "desti_GDP"
+mydataMigration$Country.Code<-NULL
+mydataMigration$Country.Name<-NULL
+mydataMigration$official_name_en<-NULL
+
+head(mydataMigration)
+```
+
+
+Per finalitzar factoritzarem les variables qualitatives i finalment, mostrarem un resum de les dades de les nostres dues taules:
+```{r}
+
+mydataMigration$origen_country<-as.factor(mydataMigration$origen_country)
+mydataMigration$origen_name<-as.factor(mydataMigration$origen_name)
+mydataMigration$desti_country<-as.factor(mydataMigration$desti_country)
+mydataMigration$desti_name<-as.factor(mydataMigration$desti_name)
+mydataMigration$has_phd<-as.factor(mydataMigration$has_phd)
+mydataMigration$has_migrated<-as.factor(mydataMigration$has_migrated)
+
+summary(mydataMigration)
+
+#-------------------------afegir desviació estandar i mostrar comparant origen amb destí---
+#I indicar descripció completa de les dues taules amb les que treballarem.
+
+```
+
+
+
+
+
+
+
+****
+#3. Neteja de les dades.
+##3.1 Les dades contenen zeros o elements buits? Com gestionaries aquests casos?
+
+Revisem l'estat de les dades de la nostra taula d'estudi. Aquesta ja ha tingut un tractament respecte les dades originals (amb la creació de nous atributs Origen, Desti i Any), així que molts dels problemes ja els hem resolt prèviament. Revisem l'estat actual de les dades:
+
+
+-**mydataMigration**
+Revisem si hi ha valors nulls:
 
 ```{r}
-#Mirem primer les dades d GDP
-sapply(mydataGDP,class)
+sapply(mydataMigration,class)
 #Com que al obrir el fitxer hem convertit tots els bancs en NA, només cal buscar els NA:
-sapply(mydataGDP, function(x) sum(is.na(x)))
-#Observem que en tots hi ha valor GDP. Si agafem el mínim, veiem que no hi ha cap amb valor 0:
-min(mydataGDP$Value)
-#Veiem que hi ha registres que no hem trobat l'equivalent en codi Alpha-2. Només afectarà en el nostre estudi si són països que no estiguin en el primer dataset. Així que revisem si tots els països Alpha-2 del primer dataset tenen almenys un registre en el segon dataset
-l1<-levels(mydataResearcher$phd_country)
-l2<-levels(mydataResearcher$earliest_country)
-l3<-levels(mydataResearcher$country_2016)
+sapply(mydataMigration, function(x) sum(is.na(x)))
+```
 
-ll1<-levels(mydataGDP$ISO3166.1.Alpha.2)
-
-(l1 %in% ll1)
-(l2 %in% ll1)
-(l3 %in% ll1)
+Anem a revisar els atributs que tenen valors nulls:
+1. Ens interessen dades que tinguin origen i destí informats. Si algún dels dos atributs és buit, només tindríem una informació parcial. Pel nostre estudi optem per eliminar-los. També eliminarem els que no tenen any informat:
+```{r}
+nrow(mydataMigration)
+mydataMigration<-mydataMigration[!is.na(mydataMigration$origen_country)&!is.na(mydataMigration$desti_country)&!is.na(mydataMigration$any),]
+nrow(mydataMigration)
+sapply(mydataMigration, function(x) sum(is.na(x)))
 
 ```
 
-- **Scientific Researcher Migrations**:
+2. Mirem quins països no tenim descripció. És una dada informativa, només és una codificació per ajudar-nos en la interpretació de les dades. Mirem de resoldre-ho:
+```{r}
+unique(mydataMigration$origen_country[is.na(mydataMigration$origen_name)])
+unique(mydataMigration$desti_country[is.na(mydataMigration$desti_name)])
+```
 
-Revisem si hi ha dades nul·les. Observem que hi ha valors buits en quasi tots els atributs. Estudiem quin en pot ser el motiu i l'afectació que pot tenir en cadascún d'ells: 
-
-- *phd_country, phd_year, has_phd*: 
-
-Aquestes tres dades estan relacionades. Si *has_phd=False*, aleshores ja és correcte que tinguin valor NULL el *phd_country* i *phd_year*. Acotem doncs els casos a resoldre:
-
+Veiem que només és un codi que no ha trobat la descripció. Per les sigles sembla "Taiwan". Revisem la taula de codis i comprovem que no hi ha cap registre que correspongui amb la descripció de "Taiwan". Ho podem entendre al ser un país on no a tot arreu és reconegut. Procedim doncs a introduir manualment el nom corresponent:
 
 ```{r}
-mydata2<-mydataResearcher[which (mydataResearcher$has_phd=="True" & (is.na(mydataResearcher$phd_year)|is.na(mydataResearcher$phd_country))),]
+#Comprovem que no tenim cap registre de descripció Taiwan:
+mydataCodes$official_name_en[which (mydataCodes$official_name_en=="Taiwan")]
 
-head(mydata2)
-nrow(mydata2)
-nrow(mydata2[which (is.na(mydata2$phd_year)),])
-nrow(mydata2[which (is.na(mydata2$phd_country)),])
+#Al no retornar cap resultat, procedim doncs a introduir el nom manualment:
+mydataMigration$origen_name<-as.character(mydataMigration$origen_name)
+mydataMigration$origen_name[which (mydataMigration$origen_country=="TW")]<-"Taiwan"
+mydataMigration$origen_name<-as.factor(mydataMigration$origen_name)
+
+mydataMigration$desti_name<-as.character(mydataMigration$desti_name)
+mydataMigration$desti_name[which (mydataMigration$desti_country=="TW")]<-"Taiwan"
+mydataMigration$desti_name<-as.factor(mydataMigration$desti_name)
+
+sapply(mydataMigration, function(x) sum(is.na(x)))
+
 ```
 
-Així que tenim `r nrow(mydata2[which (is.na(mydata2$phd_year)),])` casos de doctorats sense informació de l'any de doctorat i `r nrow(mydata2[which (is.na(mydata2$phd_country)),])` casos de doctorats sense país de doctorat informat. En total formen `r nrow(mydata2)` casos amb dades incompletes de PhD. No eliminarem aquests registres perquè ens interessa com a informació de persones que tenen el doctorat i ha o no emigrat, encara que no tinguem els països ni data del doctorat.
-
-- *earliest_country, earliest_year, has_migrated*: 
-
-Analitzarem aquestes dades alhora al estar relacionades. Si la persona no ha migrat, aleshores en tindrem prou que hi hagi informat al país en *country_2016*. Així que descartarem com dades problemàtiques els que sí tenen país en 2016 informat i no són migrants:
+4. Ara només queda revisar les dades de GPD. Aquests corresponen a països i anys dels que no disposem informació de renta per càpita. Com que centrarem l'estudi de renta per càpita a Espanya i EEUU, només revisarem aquests dos països:
 ```{r}
-mydata3<-mydataResearcher[which (mydataResearcher$has_migrated=="True" & is.na(mydataResearcher$country_2016) & (is.na(mydataResearcher$earliest_country)|is.na(mydataResearcher$earliest_year))),]
-nrow(mydata3)
-nrow(mydata3[which (is.na(mydata3$earliest_year)),])
-nrow(mydata3[which (is.na(mydata3$earliest_country)),])
-```
+esp<-mydataMigration[which (mydataMigration$origen_country=="ES" & is.na(mydataMigration$origen_GDP)),]
+usa<-mydataMigration[which (mydataMigration$origen_country=="US" & is.na(mydataMigration$origen_GDP)),]
 
-Hem reduït els casos problemàtics, però encara podem revisar si n'hi ha amb país i any de doctorat informat:
-```{r}
-nrow(mydata3[which (is.na(mydata3$phd_year) | is.na(mydata3$phd_country)),])
-nrow(mydata3[which (is.na(mydata3$phd_year)),])
-nrow(mydata3[which (is.na(mydata3$phd_country)),])
-```
-
-Aquests són els casos dels quals no disposem informació de país i any d'on provenen (origen). Els conservarem perquè ens donarà informació si tenen o no doctorat i si han migrat o no, però no serviran per estudis de moviment entre països.
-
-- *country_2016*:
-
-aquest atribut ja l'hem estudiat en punts anteriors. Però per tenir-ho present, revisarem aquells que no migren, han de tenir algún país assignat. I els que migren, han de tenir country_2016 informat per saber-ne el destí.
-
-```{r}
-mydata4<-mydataResearcher[which (mydataResearcher$has_migrated=="True" & is.na(mydataResearcher$country_2016) ),]
-nrow(mydata4)
+min(esp$any)
+min(usa$any)
+max(esp$any)
+max(usa$any)
+boxplot(esp$any)
+boxplot(usa$any)
 
 ```
-Aquest registres no podem saber-ne el país destí. Mirem ara els que no migren si tots tenen algún país assignat:
-```{r}
-mydata5<-mydataResearcher[which (mydataResearcher$has_migrated=="False" & is.na(mydataResearcher$country_2016) & is.na(mydataResearcher$phd_country) & is.na(mydataResearcher$earliest_country)   ),]
-nrow(mydata5)
-```
 
-Veiem que hi ha força regsitres que no tenim informació del país (ni origen ni destí). Sí sabem que no han migrat. Els haurem de descartar en estudis de països però els conservarem per estudis de doctorats que sí o no migren.
-
-
-
-
-- *origen_country, desti_country, any*:
-Davant aquest estudi de dades, veiem que ens ha anat bé crear els atributs ORIGEN / DESTI / ANY. Així que el que ens interessa és veure els nulls en aquests 3 atributs. Veiem que en són força. Ho haurem de tenir en compte en els análisis de dades. No les descartarem perquè sí que tenen informació de si han migrat o tenen doctorat
+Fins al 1960 aprox no tenim informació de renta per càpita tant per EEUU com per Espanya. Al ser dates semblants, i per no perdre informació de migracions, mantenim els registres i deixem les dades nul·les a 0. No mirem de fer estimació de la renta per càpita perquè no seria un valor fiable, i tenim prous dades per als anys posteriors al 1960.
 
 ```{r}
-mydata6<-mydataResearcher[which (is.na(mydataResearcher$origen_country)),]
-nrow(mydata6)
-
-mydata7<-mydataResearcher[which (is.na(mydataResearcher$desti_country)),]
-nrow(mydata7)
-
-mydata8<-mydataResearcher[which (is.na(mydataResearcher$any)),]
-nrow(mydata8)
+mydataMigration$origen_GDP[is.na(mydataMigration$origen_GDP)]<-0
+mydataMigration$desti_GDP[is.na(mydataMigration$desti_GDP)]<-0
+sapply(mydataMigration, function(x) sum(is.na(x)))
 ```
 
-NOTA: detectem que hi ha registres on indica migració però País origen i destí tenen el mateix valor. Això podria ser perquè la migració s'ha fet entre localitats del mateix país o perquè la interpretació feta del registre no és correcta (potser l'usuari a ORCID ha introduït el país d'origen enlloc d'on està afincat, per exemple). També podria ser que no estigués ben informat l'atribut de si ha migrat o no. Una altra possibilitat és que hagi migrat i retornat al país d'origen. En tots els casos tindrem que el destí és igual a l'origen, amb la possible pèrdua d'informació degut a l'estat de la font de dades.
 
 
-##Identificació i tractament de valors extrems.
+Resum dataset:
+```{r}
+summary(mydataMigration)
 
-**Revisem dades d'origen US**
+```
 
-```{r outliers US}
-#(veure si en US i en ES quin any hi ha més investigadors)
-#Boxplot per US i un altre per ES. I un per total i altre només per PHD i cadascun per total o si migren
-a1<-mydataResearcher$any[mydataResearcher$origen_country=="US"]
-a2<-mydataResearcher$any[which(mydataResearcher$origen_country=="US")]
-a3<-mydataResearcher$any[mydataResearcher$origen_country=="US"&!is.na(mydataResearcher$any)]
-a4<-mydataResearcher$any[which(mydataResearcher$origen_country=="US" &!is.na(mydataResearcher$any))]
 
-b1<-mydataResearcher$has_migrated[mydataResearcher$origen_country=="US"]
+**********************************************
 
-c1<-mydataResearcher$has_phd[mydataResearcher$origen_country=="US"]
 
-d1<-mydataResearcher$any[mydataResearcher$origen_country=="US" & mydataResearcher$has_phd=="True"]
+##3.2 Identificació i tractament de valors extrems.
 
-e1<-mydataResearcher$has_migrated[mydataResearcher$origen_country=="US"& mydataResearcher$has_phd=="True"]
+**Revisem dades d'origen US i ES**
+Revisem els *outliers* de les dades qualitatives mitjançant boxplots:
+```{r Outliers}
+for(i in 1:ncol(mydataMigration)) {
+  if (is.numeric(mydataMigration[,i])){
+    boxplot(mydataMigration[,i], main = colnames(mydataMigration)[i], width = 100)
+  }
+}
+
+```
+
+Referent a **GDP** (com país d'origen o destí), ja ens està bé tenir outliers. És ben sabut la desigualtat en el repartiment de la riquesa entre països en el món.
+D'altra banda, respecte els **anys** trobem outliers per sota del `r max(boxplot(mydataMigration$any, main = "any")$out)`. Anem a veure'n els outliers pels nostres països d'estudi (Espanya i EEUU tant com país d'origen com de destí).
+```{r}
+OrigenUSAESP<-mydataMigration[(mydataMigration$origen_country=="US")|(mydataMigration$origen_country=="ES"),]
+OrigenUSAESP$origen_country<-as.character(OrigenUSAESP$origen_country)
+OrigenUSAESP$origen_country<-as.factor(OrigenUSAESP$origen_country)
+
 #1.Boxplot per ORIGEN=US, mirar per any.
-outUS<-boxplot(a1, main="Researchers origen US",ylab="any")$out
 
-#2.Boxplot per ORIGEN=US, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(a1~b1, main="Researchers origen US segons migració",ylab="any",xlab="Ha migrat")
+DestiUSAESP<-mydataMigration[(mydataMigration$desti_country=="US")|(mydataMigration$desti_country=="ES"),]
+DestiUSAESP$desti_country<-as.character(DestiUSAESP$desti_country)
+DestiUSAESP$desti_country<-as.factor(DestiUSAESP$desti_country)
 
-#3.Boxplot per ORIGEN=US i que tenen PhD, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(a1~c1, main="Researchers origen US segons PhD",ylab="any",xlab="Té PhD")
+#1.Boxplot per ORIGEN=US, mirar per any.
+#par(mfrow=c(2,2))
+out1<-boxplot(OrigenUSAESP$any, main="Anys per país d'origen Espaya i EEUU",ylab="any")$out
+out2<-boxplot(DestiUSAESP$any, main="Anys per país de destí Espaya i EEUU",ylab="any")$out
 
-#4.Boxplot per ORIGEN=US i que tenen PhD, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(d1~e1, main="Researchers origen US que tenen PhD segons migració",ylab="any",xlab="Ha migrat")
+out3<-boxplot(OrigenUSAESP$any~OrigenUSAESP$origen_country, main="Anys per país d'origen",ylab="any")$out
+out4<-boxplot(DestiUSAESP$any~DestiUSAESP$desti_country, main="Anys per país de destí",ylab="any")$out
+max(out1)
+max(out2)
+max(out3)
+max(out4)
 
-#4.5.6. Anàleg per ORIGEN=ES
+```
+Veiem que EEUU té dades més antigues que Espanya. Com a curiositat, detecto que en les dades d'Espanya, el valor mínim es troba aïllat i allunyat respecte la resta. La resta de outliers tenen com a punt mínim entorn 1940, que curiosament coincideix amb la fi de la guerra civil. 
+
+Hem de tenir en compte que el registre ORCID no es va crear fins l'any 2012, així que les dades *outliers* serà informació no tant completa com les dades actuals. Per aquest motiu optem per eliminar els outliers del nostre estudi, establint així una data de tall. Veient que l'any màxim d'outlier dels nostres països d'estudi és `r max(c(out1,out2,out3,out4))` quan entre tot el dataset se situa a 1971, entenem que `r max(boxplot(mydataMigration$any, main = "any")$out)` ja és un bon punt de tall, així tractem totes les dades a partir del mateix punt independentment dels països d'estudi:
+
+```{r}
+library(ddpcr)
+
+length(boxplot(mydataMigration$any, main = "any")$out)
+
+mydataMigration$any<-as.numeric(mydataMigration$any)
+mydataMigration<-mydataMigration[!((mydataMigration$any) %in% outs),]
 
 
-#Referent a renta per càpita:
-f1<-mydataGDP$Value[(mydataGDP$ISO3166.1.Alpha.2=="US")]
-#7.Boxplot per país=US
-boxplot(f1, main="GPD US",ylab="GPD")
-
-#8.Boxplot per país=ES
+nrow(mydataMigration)
 
 ```
 
-Pel que fa a dades d'investigadors de EEUU, en tots els boxplot que hem visualitzat tenim outliers. En global, el nombre total d'outliers és `r length(outUS)`. Observem que hi ha outliers de dades corresponents a anys anteriors al 1960. Concretament l'interva d'anys outlier és [`r min(outUS)`,`r max(outUS)`] . Hem de tenir en compte que ORCID va sorgir al 2012. No sabem si són dades mal introduïdes o són correctes. Les mantindrem en el nostre estudi, ja que aporten informació, però en anàlisis posteriors podem tenir en compte que dades antigues no són tan completes com les que hi ha entorn l'any 2000.
-
-Referent a la renda per càpita, no observem outliers.
-
-**Revisem dades d'origen ES**
-
-```{r outliers ES}
-#(veure si en ES i en ES quin any hi ha més investigadors)
-#Boxplot per ES i un altre per ES. I un per total i altre només per PHD i cadascun per total o si migren
-a1<-mydataResearcher$any[mydataResearcher$origen_country=="ES"]
-a2<-mydataResearcher$any[which(mydataResearcher$origen_country=="ES")]
-a3<-mydataResearcher$any[mydataResearcher$origen_country=="ES"&!is.na(mydataResearcher$any)]
-a4<-mydataResearcher$any[which(mydataResearcher$origen_country=="ES" &!is.na(mydataResearcher$any))]
-
-b1<-mydataResearcher$has_migrated[mydataResearcher$origen_country=="ES"]
-
-c1<-mydataResearcher$has_phd[mydataResearcher$origen_country=="ES"]
-
-d1<-mydataResearcher$any[mydataResearcher$origen_country=="ES" & mydataResearcher$has_phd=="True"]
-
-e1<-mydataResearcher$has_migrated[mydataResearcher$origen_country=="ES"& mydataResearcher$has_phd=="True"]
-#1.Boxplot per ORIGEN=ES, mirar per any.
-outES<-boxplot(a1, main="Researchers origen ES",ylab="any")$out
-
-#2.Boxplot per ORIGEN=ES, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(a1~b1, main="Researchers origen ES segons migració",ylab="any",xlab="Ha migrat")
-
-#3.Boxplot per ORIGEN=ES i que tenen PhD, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(a1~c1, main="Researchers origen ES segons PhD",ylab="any",xlab="Té PhD")
-
-#4.Boxplot per ORIGEN=ES i que tenen PhD, mirar per any (en el mateix gràfic els migration TRUE i FALSE).
-boxplot(d1~e1, main="Researchers origen ES que tenen PhD segons migració",ylab="any",xlab="Ha migrat")
-
-
-
-
-#Referent a renta per càpita:
-#7.Boxplot per país=US
-#8.Boxplot per país=ES
-#Referent a renta per càpita:
-f0<-mydataGDP$Value[which(mydataGDP$ISO3166.1.Alpha.2=="US")]
-g0<-mydataGDP$Year[which(mydataGDP$ISO3166.1.Alpha.2=="US")]
-f1<-mydataGDP$Value[which(mydataGDP$ISO3166.1.Alpha.2=="ES")]
-g1<-mydataGDP$Year[which(mydataGDP$ISO3166.1.Alpha.2=="ES")]
-#7.Boxplot per país=US
-boxplot(f1, main="GPD ES",ylab="GPD")
-
+Exportem el dataset un cop finalitzada la neteja de dades:
+```{r Export dataset}
+my.newfile <- "Migration.csv"
+write.csv(mydataMigration, file=my.newfile, row.names = FALSE)
 
 ```
 
-Pel cas d'España els outliers en investigadors no arriben a dates tan antigues com a EEUU. Arriben fins a `r min(outES)`, quan el mínim per EEUU arriba fins a `r min(outUS)`. El nombre d'outliers és `r length(outES)`, que estan en l'interval d'anys [`r min(outES)`,`r max(outES)`]. A tenir en compte que el valor mínim es troba aïllat i allunyat respecte la resta. La resta de outliers tenen com a punt mínim entorn 1940, que curiosament coincideix amb la fi de la guerra civil. Mantenim les dades com en el cas anterior.
-
-Referent a la renda per càpita, no observem outliers.
 
 
-#Anàlisi de les dades.
-##Selecció dels grups de dades que es volen analitzar/comparar (planificació dels anàlisis a aplicar).
+****
+#4. Anàlisi de les dades.
+##4.1 Selecció dels grups de dades que es volen analitzar/comparar (planificació dels anàlisis a aplicar).
 
-Definirem diferent taules de dades per poder estudiar-les:
-1. Taula d'origen amb: país origen, any, GDP, nºmigrants, nºtotal, freq-relativa
-2. Taula de destins amb:  país destí, any, GDP, nºmigrants, nºtotal, freq-relativa
+1. Comparar fuga de talents a Espanya amb EEUU. Per això necessitem la taula de migrants agrupada per data i país origen i per data i país destí. La construirem a partir de *mydataMigration*
 
-Creem dues taules més amb la informació restringida per PhD:
-3. Taula d'origen amb: país origen, any, GDP, nºmigrants, nºtotal, freq-relativa
-4. Taula de destins amb:  país destí, any, GDP, nºmigrants, nºtotal, freq-relativa
+2. Anem a veure si les migracions és a països amb més renta per càpita, comparant les migracions de Espanya i EEUU. Utilitzarem la taula *mydataMigration.*
 
-Com que només volem estudiar EEUU i Espanya, podem reduïr el nombre de files a aquests països.
-
-##Comprovació de la normalitat i homogeneïtat de la variància.
+3. Veure cap a quins països van desde EEUU o Espanya i d'on venen. Hem de tenir taula origen-desti, *mydataMigration.*
 
 
+A continuació construïm els dos datasets d'informació de migrants acumulats per origen i any:
 
-##Aplicació de proves estadístiques per comparar els grups de dades. En funció de les  dades  i  de  l’objectiu  de  l’estudi,  aplicar  proves  de  contrast  d’hipòtesis,correlacions, regressions, etc.
+```{r}
+# mydataOrigen: 
+
+#Taula agrupada per origen i any, calculant els que han migrat
+myvars<-c("origen_country", "any", "has_migrated")
+data1<-mydataMigration[myvars]
+
+grouped_data1 <- aggregate(data1, by=list(data1$origen_country, data1$any, data1$has_migrated), FUN=length);   #notem que ignora registres NA en origen o any. Que ja ens va bé per el nostre estudi.
+
+grouped_data11<-grouped_data1[which (grouped_data1$Group.3=="True"),]
+
+colnames(grouped_data11)[colnames(grouped_data11)=="origen_country"] <- "has_migrated_True"
+grouped_data11$any<-NULL
+grouped_data11$has_migrated<-NULL
+grouped_data11$Group.3<-NULL
+colnames(grouped_data11)[colnames(grouped_data11)=="Group.1"] <- "origen_country"
+colnames(grouped_data11)[colnames(grouped_data11)=="Group.2"] <- "any"
+
+#Taula agrupada per origen i any, calculant el total
+grouped_data2 <- aggregate(data1, by=list(data1$origen_country, data1$any), FUN=length);
+
+colnames(grouped_data2)[colnames(grouped_data2)=="origen_country"] <- "TOTAL"
+grouped_data2$any<-NULL
+grouped_data2$has_migrated<-NULL
+colnames(grouped_data2)[colnames(grouped_data2)=="Group.1"] <- "origen_country"
+colnames(grouped_data2)[colnames(grouped_data2)=="Group.2"] <- "any"
+
+#Unim les dues taules
+grouped_data3<-merge(grouped_data11,grouped_data2,by=c("origen_country","any"),all.y=TRUE)
+head(grouped_data3)
+
+#i li afegim les dades de phd:
+myvars<-c("origen_country", "any", "has_phd")
+data1<-mydataMigration[myvars]
+
+grouped_data4 <- aggregate(data1, by=list(data1$origen_country, data1$any, data1$has_phd), FUN=length);
+
+grouped_data44<-grouped_data4[which (grouped_data4$Group.3=="True"),]
+
+colnames(grouped_data44)[colnames(grouped_data44)=="origen_country"] <- "has_phd_True"
+grouped_data44$any<-NULL
+grouped_data44$has_phd<-NULL
+grouped_data44$Group.3<-NULL
+colnames(grouped_data44)[colnames(grouped_data44)=="Group.1"] <- "origen_country"
+colnames(grouped_data44)[colnames(grouped_data44)=="Group.2"] <- "any"
+
+#I ho unim de nou a la taula anterior
+grouped_data5<-merge(grouped_data3,grouped_data44,by=c("origen_country","any"),all.x=TRUE)
+mydataOrigen<-grouped_data5
+
+#Finalment els valors nulls de has_migrated_True i has_phd_True els asignem 0:
+mydataOrigen$has_migrated_True[is.na(mydataOrigen$has_migrated_True)]<-0
+mydataOrigen$has_phd_True[is.na(mydataOrigen$has_phd_True)]<-0
+head(mydataOrigen)
+```
+
+
+```{r}
+#Taula agrupada per destí i any, calculant els que han migrat (anàleg al anterior)
+myvars<-c("desti_country", "any", "has_migrated")
+data1<-mydataMigration[myvars]
+
+grouped_data1 <- aggregate(data1, by=list(data1$desti_country, data1$any, data1$has_migrated), FUN=length);
+
+grouped_data11<-grouped_data1[which (grouped_data1$Group.3=="True"),]
+
+colnames(grouped_data11)[colnames(grouped_data11)=="desti_country"] <- "has_migrated_True"
+grouped_data11$any<-NULL
+grouped_data11$has_migrated<-NULL
+grouped_data11$Group.3<-NULL
+colnames(grouped_data11)[colnames(grouped_data11)=="Group.1"] <- "desti_country"
+colnames(grouped_data11)[colnames(grouped_data11)=="Group.2"] <- "any"
+
+#Taula agrupada per origen i any, calculant el total
+grouped_data2 <- aggregate(data1, by=list(data1$desti_country, data1$any), FUN=length);
+
+colnames(grouped_data2)[colnames(grouped_data2)=="desti_country"] <- "TOTAL"
+grouped_data2$any<-NULL
+grouped_data2$has_migrated<-NULL
+colnames(grouped_data2)[colnames(grouped_data2)=="Group.1"] <- "desti_country"
+colnames(grouped_data2)[colnames(grouped_data2)=="Group.2"] <- "any"
+
+#Unim les dues taules
+grouped_data3<-merge(grouped_data11,grouped_data2,by=c("desti_country","any"),all.y=TRUE)
+head(grouped_data3)
+
+#i li afegim les dades de phd:
+myvars<-c("desti_country", "any", "has_phd")
+data1<-mydataMigration[myvars]
+
+grouped_data4 <- aggregate(data1, by=list(data1$desti_country, data1$any, data1$has_phd), FUN=length);
+
+grouped_data44<-grouped_data4[which (grouped_data4$Group.3=="True"),]
+
+colnames(grouped_data44)[colnames(grouped_data44)=="desti_country"] <- "has_phd_True"
+grouped_data44$any<-NULL
+grouped_data44$has_phd<-NULL
+grouped_data44$Group.3<-NULL
+colnames(grouped_data44)[colnames(grouped_data44)=="Group.1"] <- "desti_country"
+colnames(grouped_data44)[colnames(grouped_data44)=="Group.2"] <- "any"
+
+#I ho unim de nou a la taula anterior
+grouped_data5<-merge(grouped_data3,grouped_data44,by=c("desti_country","any"),all.x=TRUE)
+mydataDesti<-grouped_data5
+
+#Finalment els valors nulls de has_migrated_True i has_phd_True els asignem 0:
+mydataDesti$has_migrated_True[is.na(mydataDesti$has_migrated_True)]<-0
+mydataDesti$has_phd_True[is.na(mydataDesti$has_phd_True)]<-0
+head(mydataDesti)
+
+``` 
+
+```{r}
+summary(mydataOrigen)
+summary(mydataDesti)
+```
+
+Exportem els dos datasets un cop acumulada la informació:
+```{r Export new dataset}
+my.newfile <- "PerOrigen.csv"
+write.csv(mydataOrigen, file=my.newfile, row.names = FALSE)
+
+my.newfile <- "PerDesti.csv"
+write.csv(mydataDesti, file=my.newfile, row.names = FALSE)
+```
 
 
 
 
-#Representació dels resultats a partir de taules i gràfiques.
+##4.2 Comprovació de la normalitat i homogeneïtat de la variància.
+
+
+Mitjançant la prova de normalitat *Anderson-Darling* comprovem la normalitat de les dades quantitatives. Si el p-valor és superior a 0,05 ho considerarem com distribució normal:
+
+```{r}
+library(nortest)
+
+alpha = 0.05
+col.names = colnames(mydataMigration)
+
+for (i in 1:ncol(mydataMigration)) {
+  if (i == 1) cat("Variables que no segueixen una distribució normal:\n")
+  if (is.integer(mydataMigration[,i]) | is.numeric(mydataMigration[,i])) {
+    p_val = ad.test(mydataMigration[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      # Format output
+      if (i < ncol(mydataMigration) - 1) cat(", ")
+      if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
+
+```
+
+Vejem-ho ara acotant les dades per origen EEUU i origen Espanya i anàleg com a destí:
+
+```{r}
+US<-mydataOrigen[which(mydataOrigen$origen_country=="US"),]
+ES<-mydataOrigen[which(mydataOrigen$origen_country=="ES"),]
+
+alpha = 0.05
+col.names = colnames(mydataOrigen)
+
+print('--ORIGEN US---')
+
+for (i in 1:ncol(US)) {
+  if (i == 1) cat("Variables que no segueixen una distribució normal:\n")
+  if (is.integer(US[,i]) | is.numeric(US[,i])) {
+    p_val = ad.test(US[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      # Format output
+      if (i < ncol(US) - 1) cat(", ")
+      if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
+cat("\n")
+cat("\n")
+print('--ORIGEN ES---')
+
+for (i in 1:ncol(ES)) {4
+  if (i == 1) cat("Variables que no segueixen una distribució normal:\n")
+  if (is.integer(ES[,i]) | is.numeric(ES[,i])) {
+    p_val = ad.test(ES[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      # Format output
+      if (i < ncol(ES) - 1) cat(", ")
+      if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
+cat("\n")
+cat("\n")
+print('--DESTI US---')
+
+for (i in 1:ncol(US)) {
+  if (i == 1) cat("Variables que no segueixen una distribució normal:\n")
+  if (is.integer(US[,i]) | is.numeric(US[,i])) {
+    p_val = ad.test(US[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      # Format output
+      if (i < ncol(US) - 1) cat(", ")
+      if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
+cat("\n")
+cat("\n")
+print('--DESTI ES---')
+
+for (i in 1:ncol(ES)) {4
+  if (i == 1) cat("Variables que no segueixen una distribució normal:\n")
+  if (is.integer(ES[,i]) | is.numeric(ES[,i])) {
+    p_val = ad.test(ES[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      # Format output
+      if (i < ncol(ES) - 1) cat(", ")
+      if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
+```
+
+
+Per la homgenietat, apliquem el *test Fligner-Killeen*. Ho aplicarem sobre les variables de migració i phd filtrant per EEUU i Espanya:
+
+```{r}
+dataUS<-mydataMigration[mydataMigration$origen_country=="US",]
+dataES<-mydataMigration[mydataMigration$origen_country=="ES",]
+
+fligner.test( has_migrated_True~ has_phd_True, data = US)
+fligner.test( has_migrated_True~ has_phd_True, data = ES)
+```
+ p-valor superior a 0,05 en tots dos casos. Acceptem la hipótesis de que les variances de les dues mostres són homogènies.
+ 
+ 
+
+##4.3 Aplicació de proves estadístiques per comparar els grups de dades. En funció de les  dades  i  de  l’objectiu  de  l’estudi,  aplicar  proves  de  contrast  d’hipòtesis,correlacions, regressions, etc.
+
+
+Mirem si hi ha correlació entre la renta per càpita origen i destí. A més ho mirarem restringint origen US i origen ES.
+```{r}
+res <- cor(mydataMigration[,c("origen_GDP","desti_GDP")])
+round(res, 2)
+
+res <- cor(mydataMigration[mydataMigration$origen_country=="US",c("origen_GDP","desti_GDP")])
+round(res, 2)
+
+res <- cor(mydataMigration[mydataMigration$origen_country=="ES",c("origen_GDP","desti_GDP")])
+round(res, 2)
+```
+
+
+Observem que no hi ha correlació. De fet hi ha més relació a EEUU que a Espanya.
+
+
+****
+#5. Representació dels resultats a partir de taules i gràfiques.
+
+
 
 1. Gràfics on es visualitzi informació de Espanya i EEUU soperposades amb dades de freq.relatives per poder-les comparar, per anys (migració per anys)
+
 2. Gràfics on es superposi renta per càpita amb migració per país i any.
 
-
 3. Mapes de destinacions EEUU i destinacions Espanya
+
 4. Mapes d'origen del que tenen com destí EEUU i Espanya
 
 
-#Resolució del problema. A partir dels resultats obtinguts, quines són les conclusions? Els resultats permeten respondre al problema?
+
+Vegem l'evolució de la renta per càpita de EEUU i Espanya
+```{r}
+USf0<-mydataGDP$Value[which(mydataGDP$ISO3166.1.Alpha.2=="US")]
+USg0<-mydataGDP$Year[which(mydataGDP$ISO3166.1.Alpha.2=="US")]
+ESf1<-mydataGDP$Value[which(mydataGDP$ISO3166.1.Alpha.2=="ES")]
+ESg1<-mydataGDP$Year[which(mydataGDP$ISO3166.1.Alpha.2=="ES")]
+
+plot(USg0, USf0,xlab="any",ylab="GPD (USdolars)", type = "o")
+lines(ESg1, ESf1, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US", "ES"),
+       col=c("black", "red"), lty=1:2, cex=0.8)
+```
+
+
+El següent boxplot ens mostra com migrants d'origen Espanya, el seu destí tendeix a tenir una renta per càpita similar que Espanya. En canvi per EEUU, la meitat dels casos el destí té una renta per càpita inferior. 
+Si el que mirem és l'origen dels migrants amb destí Espanya o EEUU, a Espanya venen de rentes per càpita similars a Espanya, en canvi a EEUU en vénen d'inferiors:
+```{r}
+mydataMigration$has_migrated<-as.character((mydataMigration$has_migrated))
+mydataMigration$has_migrated[mydataMigration$has_migrated==1]<-"True"
+mydataMigration$has_migrated[mydataMigration$has_migrated==0]<-"False"
+#Seleccionem els migrants amb origen EEUU o Espanya:
+Migrate<-mydataMigration[mydataMigration$has_migrated=="True",]
+MigrateOrigESUS<-Migrate[Migrate$origen_country=="US"|Migrate$origen_country=="ES",]
+MigrateOrigESUS$origen_country<-as.character(MigrateOrigESUS$origen_country)
+MigrateOrigESUS$origen_country<-as.factor(MigrateOrigESUS$origen_country)
+
+#Vegem si GDP destí és superior que el GDP d'origen
+boxplot((MigrateOrigESUS$desti_GDP-MigrateOrigESUS$origen_GDP)~MigrateOrigESUS$origen_country, main="Diferència de GDP amb el país destí en migrants d'EEUU/Espanya")
+
+
+
+#Análeg, per migrants amb destí EEUU o Espanya:
+MigrateDestiESUS<-Migrate[Migrate$desti_country=="US"|Migrate$desti_country=="ES",]
+MigrateDestiESUS$desti_country<-as.character(MigrateDestiESUS$desti_country)
+MigrateDestiESUS$desti_country<-as.factor(MigrateDestiESUS$desti_country)
+
+#Vegem si GDP destí és superior que el GDP d'origen
+boxplot((MigrateDestiESUS$desti_GDP-MigrateDestiESUS$origen_GDP)~MigrateDestiESUS$desti_country, main="Diferència GDP amb el país origen en migrants amb destí EEUU/Espanya")
+
+```
+
+Anem a veure quantitat de migració entre els dos països d'estudi, per anys:
+```{r}
+
+OrigenMigrated_US<-mydataOrigen$has_migrated_True[which(mydataOrigen$origen_country=="US")]
+OrigenMigratedAny_US<-mydataOrigen$any[which(mydataOrigen$origen_country=="US")]
+OrigenMigrated_ES<-mydataOrigen$has_migrated_True[which(mydataOrigen$origen_country=="ES")]
+OrigenMigratedAny_ES<-mydataOrigen$any[which(mydataOrigen$origen_country=="ES")]
+
+plot(OrigenMigratedAny_US, OrigenMigrated_US,xlab="any",ylab="Migració", type = "o",main="Migració anual")
+lines(OrigenMigratedAny_ES, OrigenMigrated_ES, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US", "ES"),
+       col=c("black", "red"), lty=1:2, cex=0.8,title="País origen")
+
+
+OrigenMigrated_US2<-OrigenMigrated_US/mydataOrigen$TOTAL[which(mydataOrigen$origen_country=="US")]
+OrigenMigrated_ES2<-OrigenMigrated_ES/mydataOrigen$TOTAL[which(mydataOrigen$origen_country=="ES")]
+
+plot(OrigenMigratedAny_US, OrigenMigrated_US2,xlab="any",ylab="Freqüència relativa de migració", type = "o",main="Migració anual relativa")
+lines(OrigenMigratedAny_ES, OrigenMigrated_ES2, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US", "ES"),
+       col=c("black", "red"), lty=1:2, cex=0.8,title="País origen")
+```
+
+Observem en el primer gràfic com la migració segueix una corba semblant entre els dos països. 
+El segon gràfic mostra la freqüència relativa de migrants sobre el total d'investigadors registrats. Observem com fins finals dels 90, hi havia més migració a EEUU. A finals dels 90 Espanya té més migració però és molt semblant i amb la mateixa fluctuació que a EEUU.
+
+Vegem com es comporta com a països destins:
+```{r}
+DestiMigrated_US<-mydataDesti$has_migrated_True[which(mydataDesti$desti_country=="US")]
+DestiMigratedAny_US<-mydataDesti$any[which(mydataDesti$desti_country=="US")]
+DestiMigrated_ES<-mydataDesti$has_migrated_True[which(mydataDesti$desti_country=="ES")]
+DestiMigratedAny_ES<-mydataDesti$any[which(mydataDesti$desti_country=="ES")]
+
+plot(OrigenMigratedAny_US, OrigenMigrated_US,xlab="any",ylab="Migració", type = "o",main="Migració anual")
+lines(OrigenMigratedAny_ES, OrigenMigrated_ES, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US", "ES"),
+       col=c("black", "red"), lty=1:2, cex=0.8,title="País destí")
+
+
+DestiMigrated_US2<-OrigenMigrated_US/mydataOrigen$TOTAL[which(mydataOrigen$desti_country=="US")]
+DestiMigrated_ES2<-OrigenMigrated_ES/mydataOrigen$TOTAL[which(mydataOrigen$desti_country=="ES")]
+
+plot(DestiMigratedAny_US, DestiMigrated_US,xlab="any",ylab="Freqüència relativa de migració", type = "o",main="Migració anual relativa")
+lines(DestiMigratedAny_ES, DestiMigrated_ES, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US", "ES"),
+       col=c("black", "red"), lty=1:2, cex=0.8,title="País destí")
+```
+
+També veiem una corba semblant entre països, però mirant el segon gràfic, veiem com EEUU és un destí clarament preferit, tot i que en els últims anys hi ha hagut una davallada important que ha fet igualar amb les dades d'Espanya. 
+
+
+També podem donar un cop d'ull a la diferència entre la emmigració i immigració:
+```{r}
+USf4<-OrigenMigrated_US/mydataOrigen$TOTAL[which(mydataOrigen$origen_country=="US")]
+USg4<-mydataOrigen$any[which(mydataOrigen$origen_country=="US")]
+ESf5<-OrigenMigrated_ES/mydataOrigen$TOTAL[which(mydataOrigen$origen_country=="ES")]
+ESg5<-mydataOrigen$any[which(mydataOrigen$origen_country=="ES")]
+USff4<-OrigenMigrated_US/mydataDesti$TOTAL[which(mydataDesti$desti_country=="US")]
+USgg4<-mydataDesti$any[which(mydataDesti$desti_country=="US")]
+ESff5<-OrigenMigrated_ES/mydataDesti$TOTAL[which(mydataDesti$desti_country=="ES")]
+ESgg5<-mydataDesti$any[which(mydataDesti$desti_country=="ES")]
+
+plot(USg4, (USff4-USf4),xlab="any",ylab="Migració", type = "o")
+lines(ESg5, (ESff5-ESf5), type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("US desti-origen", "ES desti-origen"),
+       col=c("black", "red"), lty=1:2, cex=0.8)
+
+plot(ESg1, ESf1/max(ESf1),xlab="any",ylab="GPD (USdolars)", type = "o")
+lines(ESgg5, ESff5, type = "o", lty = 2, col = "red")
+legend("topleft",legend=c("ES"),
+       col=c("black"), lty=1:2, cex=0.8)
+
+
+
+```
+
+Veiem que a EEUU hi havia una època on marxava més gent que no pas es quedava. En canvi a Espanya en aquella època inclús va augmentar una mica la immigració. Això és entre els anys 90 i 2010 aprox (abans de la crisi). La tendència sembla ser a equilibrar-se de nou, amb indexos semblants entre EEUU i Espanya.
+Sembla que a Espanya hi ha més gent que ve que no pas que marxa. Però la gent que ve prové d'una renta per càpita inferior, mentres que la que marxa va a països de renta per càpita superior. Pot ser que aquí ens considerem mal pagats i per això marxen, tot i no superar la quantitat dels que venen?
 
 
 
 
-#Codi:  Cal  adjuntar  el  codi,  preferiblement  en  R,  amb  el  que  s’ha  realitzat  la  neteja, anàlisi i representació de les dades. Si ho preferiu, també podeu treballar en Python.
+
+Per últim vegem les destinacions dels investigadors. Per visualitzar-ho ens ajudarem d'un mapa mundi:
+
+```{r}
+library(rworldmap)
+
+
+origen<-mydataMigration[mydataMigration$origen_country=="US" & mydataMigration$has_migrated=="True",]
+
+mapa=joinCountryData2Map(origen, joinCode="ISO2", nameJoinColumn="desti_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="US Researchers migrants - destinació",missingCountryCol='grey', numCats=9)
+
+
+
+
+origen<-mydataMigration[mydataMigration$origen_country=="ES" & mydataMigration$has_migrated=="True",]
+
+mapa=joinCountryData2Map(origen, joinCode="ISO2", nameJoinColumn="desti_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - destinació",missingCountryCol='grey', numCats=9)
+
+
+
+desti<-mydataMigration[mydataMigration$desti_country=="US" & mydataMigration$has_migrated=="True",]
+
+mapa=joinCountryData2Map(desti, joinCode="ISO2", nameJoinColumn="origen_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="US Researchers migrants - origen",missingCountryCol='grey', numCats=9)
+
+
+
+desti<-mydataMigration[mydataMigration$desti_country=="ES" & mydataMigration$has_migrated=="True",]
+
+mapa=joinCountryData2Map(desti, joinCode="ISO2", nameJoinColumn="origen_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - origen",missingCountryCol='grey', numCats=9)
+
+```
+
+Ara ens centrarem a Espanya, compararem dos anys (1990 i 2010) per veure les destinacions dels espanyols i la procedència de immigrants investigadors:
+
+
+```{r}
+origen<-mydataMigration[mydataMigration$origen_country=="ES" & mydataMigration$has_migrated=="True"&(mydataMigration$any=="1990"),]
+
+mapa=joinCountryData2Map(origen, joinCode="ISO2", nameJoinColumn="desti_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - destinació 1990",missingCountryCol='grey', numCats=9)
+
+
+origen<-mydataMigration[mydataMigration$origen_country=="ES" & mydataMigration$has_migrated=="True"&(mydataMigration$any=="2010"),]
+
+mapa=joinCountryData2Map(origen, joinCode="ISO2", nameJoinColumn="desti_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - destinació 2010",missingCountryCol='grey', numCats=9)
+
+
+
+
+
+desti<-mydataMigration[mydataMigration$desti_country=="ES" & mydataMigration$has_migrated=="True"&(mydataMigration$any=="1990"),]
+
+mapa=joinCountryData2Map(desti, joinCode="ISO2", nameJoinColumn="origen_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - origen 1990",missingCountryCol='grey', numCats=9)
+
+desti<-mydataMigration[mydataMigration$desti_country=="ES" & mydataMigration$has_migrated=="True"&(mydataMigration$any=="2010"),]
+
+mapa=joinCountryData2Map(desti, joinCode="ISO2", nameJoinColumn="origen_country")
+mapCountryData(mapa,catMethod="fixedWidth",nameColumnToPlot="has_migrated",
+            mapTitle="ES Researchers migrants - origen 2010",missingCountryCol='grey', numCats=9)
+```
+
+
+
+****
+#6. Resolució del problema. A partir dels resultats obtinguts, quines són les conclusions? Els resultats permeten respondre al problema?
+
+Després d'aquest estudi mirem de respondre les qüestions plantejades a l'inici
+
+- Com està Espanya en comparativa amb altres països de fuga de talents? Comparació respecte EEUU.
+
+Amb Espanya o EEUU com país d'origen, en nombres relatius podem dir que tots dos països es comporten amb un index similar al llarg dels anys. Als anys 90 hi havia més migració a l'exterior a EEUU de forma diferenciada amb Espanya, però per l'any 2000 fins ara la migració és molt similar i segueix la mateixa tendència entre ells al llarg d'aquest periode. Així que el mite que a Espanya marxen els talents, podem confirmar que marxa amb la mateixa relació que ho fan d'EEUU.
+En canvi, pel que fa la immigració el comportament tot i seguir una mateixa corba, a EEUU els índexos són molt més elevats que a Espanya. Al 2005 és on la diferència és més gran però cap al 2010 sorprenentment s'igualen els índexos dels dos països. 
+
+Es podria potser torbar les causes en els moments que viu cada país. Però aquests resultats no podem saber la fiabilitat degut a que no coneixem el context exacte de l'origen de les dades. Ens manca informació de la fiabilitat de les dades, de si la informació dels anys és més completa passats uns anys que els recents (per exemple, podria ser que d'aquí 5 anys, la informació de l'any 2016 sigui superior a les dades que hi ha ara, perquè s'introdueixen durant els 5 anys següents). Això podria explicar la corba que observem en el gràfic i com disminueixen les dades més recents.
+
+
+- Hi ha una relació de la migració amb la renta per càpita del país? (com origen o com destí)
+
+Els migrants d'origen Espanya, el seu destí tendeix a tenir una renta per càpita similar que Espanya o superior. En canvi per EEUU, la meitat dels casos el destí té una renta per càpita inferior i hi ha una variació més gran de GDP.
+
+Si el que mirem és l'origen dels migrants amb destí Espanya o EEUU, a Espanya venen de rentes per càpita similars a Espanya, en canvi a EEUU en vénen d'inferiors.
+
+
+- A quins països van els investigadors i de quins països venen a Espanya? I als EEUU?
+
+Amb els mapes podem veure les diferents procedències i destinacions. Els últims mapes on visualitzem les destinacions pels anys 1990 i 2010 es veu com hi ha nous països que s'afegeixen i d'altres que deixen de tenir fluxe de professionals, però n'hi ha que es mantenen en els dos mapes. El que sí que es visualitza en els mapes que comprèn les dades de tots els anys ( a partir del 1971) que el fluxe d'investigadors és per quasi tots els països del món. Hi ha una gran àrea de movilització entre científics.  
+
+
+****
+#7. Codi:  Cal  adjuntar  el  codi,  preferiblement  en  R,  amb  el  que  s’ha  realitzat  la  neteja, anàlisi i representació de les dades. Si ho preferiu, també podeu treballar en Python.
+
+****
+
+En el repositori adjunto el codi en R (dcampilloca_TCD_PRAC2.Rmd)
+
+
+
